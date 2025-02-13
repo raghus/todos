@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Stylish Todo App with Supabase</title>
+    <!-- Import a modern font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      /* Global resets and base styles */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #89f7fe, #66a6ff);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+      /* Container for the app */
+      .app-container {
+        background: #fff;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 0.8s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      /* Header styling */
+      h1 {
+        text-align: center;
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+        color: #333;
+        letter-spacing: 1px;
+        position: relative;
+      }
+      h1::after {
+        content: "";
+        width: 60px;
+        height: 4px;
+        background: #66a6ff;
+        display: block;
+        margin: 8px auto 0;
+        border-radius: 2px;
+      }
+      /* Input group styling */
+      .input-group {
+        display: flex;
+        margin-bottom: 1.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #ddd;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .input-group input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        outline: none;
+        font-size: 1rem;
+        transition: background 0.3s ease;
+      }
+      .input-group input:focus {
+        background: #f5faff;
+      }
+      .input-group button {
+        padding: 0.75rem 1.25rem;
+        border: none;
+        background: #66a6ff;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+      .input-group button:hover {
+        background: #5590e2;
+      }
+      /* Todos section styling */
+      .todos-section {
+        margin-bottom: 1.5rem;
+      }
+      .todos-section h2 {
+        font-size: 1.25rem;
+        color: #333;
+        margin-bottom: 0.75rem;
+        border-bottom: 2px solid #66a6ff;
+        padding-bottom: 0.25rem;
+      }
+      hr {
+        border: none;
+        border-top: 1px dashed #ddd;
+        margin: 1.5rem 0;
+      }
+      /* Todo list styling */
+      ul.todo-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ul.todo-list li {
+        background: #fafafa;
+        border: 1px solid #e6e6e6;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      ul.todo-list li:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+      }
+      .todo-left {
+        display: flex;
+        align-items: center;
+      }
+      .todo-left input[type="checkbox"] {
+        margin-right: 1rem;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+      .todo-text {
+        color: #555;
+        word-break: break-word;
+      }
+      .completion-date {
+        font-size: 0.85rem;
+        color: #999;
+        margin-left: 0.5rem;
+      }
+      .delete-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #ff6b6b;
+        font-size: 1.2rem;
+        transition: color 0.2s ease;
+      }
+      .delete-btn:hover {
+        color: #ff5252;
+      }
+      /* Animation for marking complete */
+      @keyframes markComplete {
+        0% { background-color: #fafafa; }
+        50% { background-color: #d4edda; }
+        100% { background-color: #fafafa; opacity: 0.6; }
+      }
+      .completed-animation {
+        animation: markComplete 0.5s ease forwards;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <h1>My Todos</h1>
+      <div class="input-group">
+        <input type="text" id="new-todo" placeholder="Add a new todo...">
+        <button id="add-todo">Add</button>
+      </div>
+      <div class="todos-section" id="pending-section">
+        <h2 id="pending-heading">Pending Todos</h2>
+        <ul class="todo-list" id="pending-list"></ul>
+      </div>
+      <hr>
+      <div class="todos-section" id="completed-section">
+        <h2 id="completed-heading">Completed Todos</h2>
+        <ul class="todo-list" id="completed-list"></ul>
+      </div>
+    </div>
+
+    <!-- Load the Supabase JS client from a CDN -->
+    <script type="module">
+      import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js';
+
+      // Initialize the Supabase client
+      const SUPABASE_URL = "https://yrcqyjzqatatcwwxonzm.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyY3F5anpxYXRhdGN3d3hvbnptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzkzOTk0NTMsImV4cCI6MjA1NDk3NTQ1M30.gj9xEEixlK5E20OZA8YltCHRoiPDi0td3VZgRYyq9DY";
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // Helper: Format date to dd-mon-yyyy (e.g., 05-Jul-2025)
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        const day = date.getUTCDate().toString().padStart(2, '0');
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = monthNames[date.getUTCMonth()];
+        const year = date.getUTCFullYear();
+        return `${day}-${month}-${year}`;
+      }
+
+      // Fetch todos from the database and separate pending from completed
+      async function fetchTodos() {
+        const { data: todos, error } = await supabase
+          .from('todos')
+          .select('*');
+        if (error) {
+          console.error('Error fetching todos:', error);
+          return;
+        }
+        // Separate todos based on completion status
+        const pendingTodos = todos.filter(todo => !todo.is_complete);
+        const completedTodos = todos.filter(todo => todo.is_complete);
+
+        // Update headings with counts
+        document.getElementById('pending-heading').innerText = `${pendingTodos.length} Pending Todos`;
+        document.getElementById('completed-heading').innerText = `${completedTodos.length} Completed Todos`;
+
+        // Render Pending Todos
+        const pendingList = document.getElementById('pending-list');
+        pendingList.innerHTML = '';
+        pendingTodos.forEach(todo => {
+          const li = createTodoElement(todo);
+          pendingList.appendChild(li);
+        });
+
+        // Render Completed Todos
+        const completedList = document.getElementById('completed-list');
+        completedList.innerHTML = '';
+        completedTodos.forEach(todo => {
+          const li = createTodoElement(todo);
+          completedList.appendChild(li);
+        });
+      }
+
+      // Create a todo list item element
+      function createTodoElement(todo) {
+        const li = document.createElement('li');
+        li.dataset.id = todo.id;
+
+        // Container for checkbox and text
+        const leftDiv = document.createElement('div');
+        leftDiv.className = 'todo-left';
+
+        // Checkbox for toggling complete status
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.is_complete;
+        checkbox.addEventListener('change', () =>
+          toggleComplete(todo.id, checkbox.checked, li)
+        );
+        leftDiv.appendChild(checkbox);
+
+        // Todo text
+        const span = document.createElement('span');
+        span.textContent = todo.text;
+        span.className = 'todo-text';
+        leftDiv.appendChild(span);
+
+        // If completed, display the completion date
+        if (todo.is_complete && todo.updated_at) {
+          const compDate = document.createElement('span');
+          compDate.textContent = `(${formatDate(todo.updated_at)})`;
+          compDate.className = 'completion-date';
+          leftDiv.appendChild(compDate);
+        }
+
+        li.appendChild(leftDiv);
+
+        // Delete button
+        const deleteButton = document.createElement('button');
+        deleteButton.innerHTML = '&times;';
+        deleteButton.className = 'delete-btn';
+        deleteButton.addEventListener('click', () => deleteTodo(todo.id));
+        li.appendChild(deleteButton);
+
+        return li;
+      }
+
+      // Add a new todo to the database
+      async function addTodo() {
+        const input = document.getElementById('new-todo');
+        const text = input.value.trim();
+        if (!text) return;
+        const { error } = await supabase
+          .from('todos')
+          .insert([{ text, is_complete: false }]);
+        if (error) {
+          console.error('Error adding todo:', error);
+          return;
+        }
+        input.value = '';
+        fetchTodos();
+      }
+
+      // Delete a todo from the database
+      async function deleteTodo(id) {
+        const { error } = await supabase
+          .from('todos')
+          .delete()
+          .eq('id', id);
+        if (error) {
+          console.error('Error deleting todo:', error);
+          return;
+        }
+        fetchTodos();
+      }
+
+      // Toggle the completion status and update the updated_at column.
+      async function toggleComplete(id, isComplete, liElement) {
+        if (isComplete && liElement) {
+          liElement.classList.add("completed-animation");
+        }
+        const { error } = await supabase
+          .from('todos')
+          .update({
+            is_complete: isComplete,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+        if (error) {
+          console.error('Error updating todo:', error);
+          return;
+        }
+        if (isComplete && liElement) {
+          setTimeout(fetchTodos, 600);
+        } else {
+          fetchTodos();
+        }
+      }
+
+      // Set up event listeners
+      document.getElementById('add-todo').addEventListener('click', addTodo);
+      document.getElementById('new-todo').addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') addTodo();
+      });
+
+      // Initial fetch on page load
+      fetchTodos();
+    </script>
+  </body>
+</html>
