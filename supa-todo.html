@@ -2,7 +2,9 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Stylish Todo App with Supabase</title>
+    <!-- Responsive meta tag -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile-Friendly Todo App with Supabase</title>
     <!-- Import a modern font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -166,6 +168,30 @@
       }
       .completed-animation {
         animation: markComplete 0.5s ease forwards;
+      }
+      /* Mobile-specific adjustments */
+      @media (max-width: 600px) {
+        .app-container {
+          padding: 1rem;
+        }
+        h1 {
+          font-size: 1.75rem;
+          margin-bottom: 1rem;
+        }
+        .input-group input, .input-group button {
+          font-size: 0.9rem;
+          padding: 0.5rem;
+        }
+        .todos-section h2 {
+          font-size: 1.1rem;
+        }
+        ul.todo-list li {
+          padding: 0.5rem 0.75rem;
+          margin-bottom: 0.5rem;
+        }
+        .delete-btn {
+          font-size: 1rem;
+        }
       }
     </style>
   </head>
